@@ -1,0 +1,61 @@
+name: Update and deploy star map
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 0,12 * * *'   # 08:23 and 20:23 Beijing time
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Fetch the paper list from purezhi.com
+        if: github.event_name != 'push'
+        continue-on-error: true
+        run: node build/scrape.mjs
+
+      - name: Rebuild the page
+        run: python3 build/build.py
+
+      - name: Commit new data
+        if: github.event_name != 'push'
+        run: |
+          if git diff --quiet; then echo "No changes."; exit 0; fi
+          git config user.name "czki-stars"
+          git config user.email "czki-stars@users.noreply.github.com"
+          git add build/data.txt index.html
+          git commit -m "Update papers from purezhi.com"
+          git push
+
+      - name: Prepare the site folder
+        run: |
+          mkdir _site
+          cp index.html _site/
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
