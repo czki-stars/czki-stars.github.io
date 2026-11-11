@@ -903,6 +903,30 @@ function draw(t) {
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   }
 
+  // paper titles: only in the relation graph, placed without overlaps
+  if (focus && st.sel >= 0) {
+    var cand = [st.sel].concat(focusR.map(function (r) { return r.j; }));
+    ctx.font = '12px "Noto Sans SC","PingFang SC",sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    var placed = [], maxLen = k > 1.8 ? 26 : 14;
+    for (var n3 = 0; n3 < cand.length; n3++) {
+      var ld = docs[cand[n3]];
+      if (ld.al < 0.5) continue;
+      var LX = sx(ld.x), LY = sy(ld.y) + ld.rs * zf * 1.25 + 9;
+      if (LX < -80 || LX > vw + 80 || LY < 40 || LY > vh + 20) continue;
+      var txt = ld.title.length > maxLen ? ld.title.slice(0, maxLen) + '…' : ld.title, tw2 = ctx.measureText(txt).width;
+      var rect = { x: LX - tw2 / 2 - 4, y: LY - 2, w: tw2 + 8, h: 18 }, hit = false;
+      for (var z = 0; z < placed.length; z++) { var o = placed[z]; if (rect.x < o.x + o.w && rect.x + rect.w > o.x && rect.y < o.y + o.h && rect.y + rect.h > o.y) { hit = true; break; } }
+      if (hit && n3 > 0) {
+        rect.y = sy(ld.y) - ld.rs * zf * 1.25 - 25; hit = false;
+        for (var z2 = 0; z2 < placed.length; z2++) { var o2 = placed[z2]; if (rect.x < o2.x + o2.w && rect.x + rect.w > o2.x && rect.y < o2.y + o2.h && rect.y + rect.h > o2.y) { hit = true; break; } }
+        if (hit) continue;
+      }
+      placed.push(rect);
+      ctx.globalAlpha = n3 === 0 ? 1 : 0.9 * ld.al;
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(6,32,39,.9)'; ctx.strokeText(txt, LX, rect.y + 2);
+      ctx.fillStyle = n3 === 0 ? '#9FF2EA' : '#EEF7F6'; ctx.fillText(txt, LX, rect.y + 2);
+    }
+  }
   ctx.globalAlpha = 1;
 }
 function frame(t) {
